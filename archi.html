@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchArchive — 나의 건축 아카이브 & 비전보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts (Inter / Pretendard 스타일) -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    },
+                    colors: {
+                        notion: {
+                            bg: '#fbfbfa',
+                            card: '#ffffff',
+                            border: '#e9e9e8',
+                            text: '#37352f',
+                            muted: '#9b9a97',
+                            hover: '#f1f1ef',
+                            accent: '#2f2e2b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #fbfbfa; color: #37352f; }
+        /* 노션 스타일 스크롤바 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e0e0de; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-neutral-200">
+
+    <!-- 상단 노션 스타일 헤더 -->
+    <header class="border-b border-notion-border bg-white/80 backdrop-blur sticky top-0 z-30 px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl">🏛️</span>
+            <div>
+                <h1 class="font-semibold text-sm tracking-tight text-notion-text">Architecture Journal & Vision Board</h1>
+                <p class="text-xs text-notion-muted">건축 기행, 독서 기록, 그리고 공간에 대한 사유</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="openModal()" class="inline-flex items-center space-x-1.5 bg-notion-accent text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-black transition-colors shadow-sm">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>새 기록 추가</span>
+            </button>
+            <button onclick="exportData()" class="inline-flex items-center space-x-1.5 bg-white border border-notion-border px-3 py-1.5 rounded-md text-xs font-medium hover:bg-notion-hover transition-colors text-notion-text">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>데이터 백업(JSON)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+        
+        <!-- 사이드바 (카테고리 및 통계) -->
+        <aside class="space-y-6 md:col-span-1">
+            <div>
+                <h3 class="text-xs font-semibold text-notion-muted uppercase tracking-wider mb-2 px-2">Views / Categories</h3>
+                <nav id="category-list" class="space-y-0.5">
+                    <!-- 동적 생성 -->
+                </nav>
+            </div>
+
+            <div class="bg-white border border-notion-border rounded-lg p-4 space-y-3 shadow-sm">
+                <h4 class="text-xs font-semibold text-notion-text flex items-center space-x-1.5">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i>
+                    <span>AI 어시스턴트 메모</span>
+                </h4>
+                <p class="text-xs text-notion-muted leading-relaxed">
+                    작성하신 기록을 바탕으로 궁금한 점을 찾아보거나, 켄고 쿠마와 안도 다다오의 건축 철학을 비교해 볼 수 있습니다.
+                </p>
+                <div class="relative">
+                    <input type="text" id="ai-search-input" placeholder="예: 켄고 쿠마, 오사카, 독서..." class="w-full bg-notion-bg border border-notion-border rounded px-2.5 py-1.5 text-xs text-notion-text placeholder-notion-muted focus:outline-none focus:border-notion-accent" oninput="filterByQuery(this.value)">
+                </div>
+            </div>
+        </aside>
+
+        <!-- 콘텐츠 피드 영역 -->
+        <section class="md:col-span-3 space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-notion-border">
+                <h2 id="current-category-title" class="text-sm font-semibold text-notion-text">전체 기록</h2>
+                <span id="record-count" class="text-xs text-notion-muted">총 0개</span>
+            </div>
+
+            <!-- 카드 리스트 그리드 -->
+            <div id="posts-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- 동적 렌더링 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 기록 작성 모달 -->
+    <div id="record-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-notion-border rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center justify-between border-b border-notion-border pb-3">
+                <h3 class="text-sm font-semibold text-notion-text">새로운 건축 기록 남기기</h3>
+                <button onclick="closeModal()" class="text-notion-muted hover:text-notion-text">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <form id="record-form" onsubmit="saveRecord(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-notion-muted mb-1">제목</label>
+                    <input type="text" id="form-title" required placeholder="예: 오사카 스타벅스 리저브 (켄고 쿠마)" class="w-full bg-notion-bg border border-notion-border rounded px-3 py-2 text-notion-text focus:outline-none focus:border-notion-accent">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-notion-muted mb-1">카테고리</label>
+                        <select id="form-category" class="w-full bg-notion-bg border border-notion-border rounded px-3 py-2 text-notion-text focus:outline-none focus:border-notion-accent">
+                            <option value="기행 기록">✈️ 기행 기록</option>
+                            <option value="독서 및 세미나">📚 독서 및 세미나</option>
+                            <option value="공간 비전보드">📌 공간 비전보드</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-notion-muted mb-1">날짜</label>
+                        <input type="date" id="form-date" required class="w-full bg-notion-bg border border-notion-border rounded px-3 py-2 text-notion-text focus:outline-none focus:border-notion-accent">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium text-notion-muted mb-1">이미지 URL (선택)</label>
+                    <input type="url" id="form-image" placeholder="https://images.unsplash.com/..." class="w-full bg-notion-bg border border-notion-border rounded px-3 py-2 text-notion-text focus:outline-none focus:border-notion-accent">
+                </div>
+                <div>
+                    <label class="block font-medium text-notion-muted mb-1">상세 내용 및 아이디어</label>
+                    <textarea id="form-content" rows="5" required placeholder="느낀 점, 영감을 받은 건축적 특징, 가보고 싶은 곳 등을 자유롭게 기록하세요..." class="w-full bg-notion-bg border border-notion-border rounded px-3 py-2 text-notion-text focus:outline-none focus:border-notion-accent resize-none"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-notion-border rounded font-medium text-notion-muted hover:bg-notion-hover">취소</button>
+                    <button type="submit" class="px-4 py-2 bg-notion-accent text-white rounded font-medium hover:bg-black">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 스크립트 로직 -->
+    <script>
+        // 초기 샘플 데이터 (사용자 맞춤형 스토리)
+        const defaultRecords = [
+            {
+                id: 1,
+                title: "오사카 켄고 쿠마 디자인 스타벅스 방문",
+                category: "기행 기록",
+                date: "2025-10-12",
+                image: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+                content: "일본 오사카 여행 중 방문한 켄고 쿠마 설계 스벅. 목재 루버를 독특하게 교차시켜 자연광이 부드럽게 스며드는 실내 분위기가 인상적이었다. 다음에는 꼭 안도 다다오의 건축물들(빛의 교회 등)을 직접 보러 가고 싶다."
+            },
+            {
+                id: 2,
+                title: "구마겐고의 '자연스러운 건축' & 알랭 드 보통 '행복의 건축'",
+                category: "독서 및 세미나",
+                date: "2026-04-10",
+                image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+                content: "최근 읽고 있는 두 권의 책으로 세미나 진행. 구마겐고의 자연 소재 활용 철학과, 알랭 드 보통이 말하는 '건축이 우리의 행복과 정서에 미치는 영향'에 대해 깊이 공감함. 공간이 인간에게 주는 위로에 대해 이야기 나눔."
+            },
+            {
+                id: 3,
+                title: "나만의 주거 공간 비전보드 (핀터레스트 영감)",
+                category: "공간 비전보드",
+                date: "2026-04-20",
+                image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
+                content: "목조 구조와 넓은 중정, 그리고 실내로 깊숙이 들어오는 따스한 자연광이 조화로운 단독주택 구조. 핀터레스트에서 수집한 이미지들을 바탕으로 나중에 직접 지어나가고 싶은 드림 하우스의 구조를 머릿속으로 시뮬레이션해 봄."
+            }
+        ];
+
+        // 로컬 스토리지 데이터 로드
+        let records = JSON.parse(localStorage.getItem('arch_records')) || defaultRecords;
+        let activeCategory = '전체';
+        let searchQuery = '';
+
+        const categories = ['전체', '기행 기록', '독서 및 세미나', '공간 비전보드'];
+
+        function init() {
+            renderCategories();
+            renderRecords();
+            lucide.createIcons();
+            // 오늘 날짜 기본 세팅
+            document.getElementById('form-date').valueAsDate = new Date();
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('category-list');
+            container.innerHTML = categories.map(cat => {
+                const count = cat === '전체' ? records.length : records.filter(r => r.category === cat).length;
+                const isActive = activeCategory === cat;
+                return `
+                    <button onclick="selectCategory('${cat}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${isActive ? 'bg-notion-hover text-notion-accent font-semibold' : 'text-notion-muted hover:bg-notion-hover hover:text-notion-text'}">
+                        <span class="flex items-center space-x-2">
+                            <span>${cat === '전체' ? '📂' : cat === '기행 기록' ? '✈️' : cat === '독서 및 세미나' ? '📚' : '📌'}</span>
+                            <span>${cat}</span>
+                        </span>
+                        <span class="text-[10px] text-notion-muted bg-notion-border/50 px-1.5 py-0.5 rounded">${count}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectCategory(cat) {
+            activeCategory = cat;
+            document.getElementById('current-category-title').innerText = cat === '전체' ? '전체 기록' : cat;
+            renderCategories();
+            renderRecords();
+        }
+
+        function filterByQuery(val) {
+            searchQuery = val.toLowerCase();
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const grid = document.getElementById('posts-grid');
+            
+            let filtered = records.filter(r => {
+                const matchesCategory = activeCategory === '전체' || r.category === activeCategory;
+                const matchesSearch = r.title.toLowerCase().includes(searchQuery) || r.content.toLowerCase().includes(searchQuery) || r.category.toLowerCase().includes(searchQuery);
+                return matchesCategory && matchesSearch;
+            });
+
+            document.getElementById('record-count').innerText = `총 ${filtered.length}개`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-notion-muted text-xs space-y-2">
+                        <p>작성된 기록이 없습니다.</p>
+                        <p class="text-[11px]">우측 상단 '새 기록 추가'를 눌러 메모를 남겨보세요!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(r => `
+                <div class="bg-white border border-notion-border rounded-lg p-4 space-y-3 hover:shadow-sm transition-all flex flex-col justify-between group">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="bg-notion-bg border border-notion-border text-notion-text px-2 py-0.5 rounded font-medium">${r.category}</span>
+                            <span class="text-notion-muted">${r.date}</span>
+                        </div>
+                        <h3 class="font-semibold text-xs text-notion-text leading-snug group-hover:underline">${r.title}</h3>
+                        ${r.image ? `<div class="overflow-hidden rounded border border-notion-border h-36 bg-notion-bg"><img src="${r.image}" alt="${r.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"></div>` : ''}
+                        <p class="text-xs text-notion-muted leading-relaxed line-clamp-3">${r.content}</p>
+                    </div>
+                    <div class="flex justify-end pt-2 border-t border-notion-border/60">
+                        <button onclick="deleteRecord(${r.id})" class="text-[11px] text-red-500 hover:text-red-700 flex items-center space-x-1">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            <span>삭제</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function openModal() {
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('record-modal').classList.add('hidden');
+            document.getElementById('record-form').reset();
+            document.getElementById('form-date').valueAsDate = new Date();
+        }
+
+        function saveRecord(e) {
+            e.preventDefault();
+            const newRecord = {
+                id: Date.now(),
+                title: document.getElementById('form-title').value,
+                category: document.getElementById('form-category').value,
+                date: document.getElementById('form-date').value,
+                image: document.getElementById('form-image').value,
+                content: document.getElementById('form-content').value
+            };
+
+            records.unshift(newRecord);
+            localStorage.setItem('arch_records', JSON.stringify(records));
+            closeModal();
+            renderCategories();
+            renderRecords();
+        }
+
+        function deleteRecord(id) {
+            if (confirm('이 기록을 삭제하시겠습니까?')) {
+                records = records.filter(r => r.id !== id);
+                localStorage.setItem('arch_records', JSON.stringify(records));
+                renderCategories();
+                renderRecords();
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "arch_archive_backup.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
